@@ -121,6 +121,113 @@ namespace GeneticSearch
             return decoded.ToString();
         }
 
+        // ---------- Вспомогательные методы ----------
+
+        // Номер операции в виде 001, 002, ...
+        static string Number(int operationNumber)
+        {
+            return operationNumber.ToString("D3");
+        }
+
+        // Индекс белка с таким названием в списке или -1, если не найден
+        static int FindProtein(List<Protein> proteins, string name)
+        {
+            for (int i = 0; i < proteins.Count; i++)
+            {
+                if (proteins[i].name == name) return i;
+            }
+            return -1;
+        }
+
+        // ---------- Операции ----------
+
+        static void Search(List<Protein> proteins, string sequence,
+                           int operationNumber, StreamWriter writer)
+        {
+            string wanted = RLDecoding(sequence);   // FK3I -> FKIII
+
+            writer.WriteLine(Number(operationNumber) + "   search   " + wanted);
+            writer.WriteLine("organism".PadRight(25) + "protein");
+
+            bool found = false;
+            for (int i = 0; i < proteins.Count; i++)
+            {
+                if (proteins[i].amino_acids.Contains(wanted))
+                {
+                    int width = Math.Max(25, proteins[i].organism.Length + 5);
+                    writer.WriteLine(proteins[i].organism.PadRight(width) + proteins[i].name);
+                    found = true;
+                }
+            }
+
+            if (!found) writer.WriteLine("NOT FOUND");
+        }
+
+        static void Diff(List<Protein> proteins, string name1, string name2,
+                         int operationNumber, StreamWriter writer)
+        {
+            writer.WriteLine(Number(operationNumber) + "   diff   " + name1 + "   " + name2);
+            writer.WriteLine("amino-acids difference:");
+
+            int index1 = FindProtein(proteins, name1);
+            int index2 = FindProtein(proteins, name2);
+
+            if (index1 == -1 || index2 == -1)
+            {
+                List<string> missing = new List<string>();
+                if (index1 == -1) missing.Add(name1);
+                if (index2 == -1) missing.Add(name2);
+                writer.WriteLine("MISSING: " + string.Join(", ", missing));
+                return;
+            }
+
+            string a = proteins[index1].amino_acids;
+            string b = proteins[index2].amino_acids;
+
+            int shortest = Math.Min(a.Length, b.Length);
+            int difference = 0;
+            for (int i = 0; i < shortest; i++)
+            {
+                if (a[i] != b[i]) difference++;
+            }
+
+            // лишний хвост более длинной цепочки тоже считается различием
+            difference += Math.Abs(a.Length - b.Length);
+
+            writer.WriteLine(difference);
+        }
+
+        static void Mode(List<Protein> proteins, string name,
+                         int operationNumber, StreamWriter writer)
+        {
+            writer.WriteLine(Number(operationNumber) + "   mode   " + name);
+            writer.WriteLine("amino-acid occurs:");
+
+            int index = FindProtein(proteins, name);
+            if (index == -1)
+            {
+                writer.WriteLine("MISSING: " + name);
+                return;
+            }
+
+            // счётчики для букв A..Z: counts[0] - буква A, counts[1] - B, ...
+            int[] counts = new int[26];
+            foreach (char ch in proteins[index].amino_acids)
+            {
+                if (ch >= 'A' && ch <= 'Z') counts[ch - 'A']++;
+            }
+
+            // ищем максимум; знак > оставляет при ничьей букву, стоящую раньше в алфавите
+            int bestIndex = 0;
+            for (int i = 1; i < 26; i++)
+            {
+                if (counts[i] > counts[bestIndex]) bestIndex = i;
+            }
+
+            char bestLetter = (char)('A' + bestIndex);
+            writer.WriteLine(bestLetter.ToString().PadRight(11) + counts[bestIndex]);
+        }
+
         static void Main(string[] args)
         {
             string sequencesFile = "sequences.0.txt";
