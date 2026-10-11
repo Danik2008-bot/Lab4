@@ -7,6 +7,10 @@ namespace GeneticSearch
 {
     class Program
     {
+        // Разделитель между операциями в выходном файле
+        const string Line =
+            "--------------------------------------------------------------------------";
+
         // Один белок: название, организм, цепочка аминокислот (уже распакованная)
         struct Protein
         {
@@ -228,16 +232,50 @@ namespace GeneticSearch
             writer.WriteLine(bestLetter.ToString().PadRight(11) + counts[bestIndex]);
         }
 
+        // Выбирает операцию по имени команды и вызывает нужный метод
+        static void CommandHandler(List<Protein> proteins, List<Command> commands,
+                                   StreamWriter writer)
+        {
+            for (int i = 0; i < commands.Count; i++)
+            {
+                int operationNumber = i + 1;
+
+                if (commands[i].name == "search")
+                    Search(proteins, commands[i].parameter1, operationNumber, writer);
+                else if (commands[i].name == "diff")
+                    Diff(proteins, commands[i].parameter1, commands[i].parameter2,
+                         operationNumber, writer);
+                else if (commands[i].name == "mode")
+                    Mode(proteins, commands[i].parameter1, operationNumber, writer);
+
+                writer.WriteLine(Line);
+            }
+        }
+
         static void Main(string[] args)
         {
             string sequencesFile = "sequences.0.txt";
             string commandsFile = "commands.0.txt";
+            string outputFile = "genedata.txt";
+
+            // имена файлов можно передать аргументами командной строки
+            if (args.Length >= 1) sequencesFile = args[0];
+            if (args.Length >= 2) commandsFile = args[1];
+            if (args.Length >= 3) outputFile = args[2];
 
             List<Protein> proteins = ReadData(sequencesFile);
             List<Command> commands = ReadCommands(commandsFile);
 
-            Console.WriteLine("Белков: " + proteins.Count);
-            Console.WriteLine("Команд: " + commands.Count);
+            using (StreamWriter writer = new StreamWriter(outputFile))
+            {
+                writer.WriteLine("Daniil Mackevich");
+                writer.WriteLine("Genetic Searching");
+                writer.WriteLine(Line);
+
+                CommandHandler(proteins, commands, writer);
+            }
+
+            Console.WriteLine("Готово! Результат в файле " + outputFile);
         }
     }
 }
